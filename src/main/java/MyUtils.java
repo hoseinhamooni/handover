@@ -14,7 +14,7 @@ public final class MyUtils {
         try {
             FileOutputStream wrt = new FileOutputStream(filename);
             for (int i=0 ; i<in.size() ; i++){
-                wrt.write((in.get(i)._1 + " ==> ").getBytes());
+                wrt.write((in.get(i)._1 + ":").getBytes());
                 for (URLdate s : in.get(i)._2()){
                     wrt.write((s.toString() + ":").getBytes());
                 }
@@ -29,7 +29,7 @@ public final class MyUtils {
         try {
             FileOutputStream wrt = new FileOutputStream(filename);
             for (int i=0 ; i<in.size() ; i++){
-                wrt.write((in.get(i)._1 + " ==> ").getBytes());
+                wrt.write((in.get(i)._1 + ":").getBytes());
                 for (IdDate s : in.get(i)._2()){
                     wrt.write((s.toString() + ":").getBytes());
                 }
