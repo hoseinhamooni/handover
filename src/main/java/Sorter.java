@@ -16,9 +16,11 @@ public class Sorter{
         long startTime1=0, endTime1=0;
         startTime1 =  System.currentTimeMillis();
         Processing processing = new Processing();
-        processing.find_change_screenname(filename_in);
+        //processing.find_change_screenname(filename_in);
         //List<Tuple2<String, TreeSet<IdDate>>> sus = processing.find_handover(filename_in, filename_out);
         //processing.process_handovers(sus);
+        MyUtils.find_loop(filename_in,filename_out);
+        //MyUtils.testfile();
         endTime1 = System.currentTimeMillis();
         System.out.println("It took " + String.valueOf((endTime1 - startTime1)/1000) + " seconds to sort ");// + String.valueOf(local_sorted.size()) + " tweets");
 
