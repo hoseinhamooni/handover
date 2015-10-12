@@ -11,6 +11,10 @@ public class Sorter{
 
 
     public static void main(String[] args) {
+        if (args.length < 2){
+            System.out.println("Not Enough Arguments");
+            return;
+        }
         String filename_in = args[0];
         String filename_out = args[1];
         long startTime1=0, endTime1=0;
