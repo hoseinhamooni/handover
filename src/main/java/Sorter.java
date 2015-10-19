@@ -32,7 +32,7 @@ public class Sorter{
         MyUtils.find_loop(filename_in+"_handover.csv");
         //MyUtils.testfile();
         endTime1 = System.currentTimeMillis();
-        System.out.println("It took " + String.valueOf((endTime1 - startTime1)/1000));// + " seconds to sort " + String.valueOf(local_sorted.size()) + " tweets");
+        System.out.println("It took" + String.valueOf((endTime1 - startTime1)/1000));// + " seconds to sort " + String.valueOf(local_sorted.size()) + " tweets");
 
     }
 }
