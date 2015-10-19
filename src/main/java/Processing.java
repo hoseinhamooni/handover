@@ -17,9 +17,7 @@ public class Processing implements Serializable{
 
     public Processing(){}
 
-    public void find_change_screenname(String filename){
-        SparkConf conf = new SparkConf().setAppName(Params.sparkAppName).setMaster(Params.sparkMaster);
-        JavaSparkContext sc = new JavaSparkContext(conf);
+    public void find_change_screenname(JavaSparkContext sc , String filename){
         JavaRDD<String> lines = sc.textFile(filename);
 
         JavaPairRDD<String,TreeSet<URLdate>> name_uid = lines.mapToPair(new PairFunction<String,String,TreeSet<URLdate>>() {
@@ -60,16 +58,14 @@ public class Processing implements Serializable{
         });
 
         List<Tuple2<String, TreeSet<URLdate>>> sus = suspicious.collect();
-        MyUtils.write_to_file_URL(sus, "changeURL.csv");
+        MyUtils.write_to_file_URL(sus, filename+"_changeURL.csv");
         System.out.println(String.valueOf(userNum) + " users");
 
     }
 
 
 
-    public List<Tuple2<String, TreeSet<IdDate>>> find_handover(String filename_in , String filename_out){
-        SparkConf conf = new SparkConf().setAppName(Params.sparkAppName).setMaster(Params.sparkMaster);
-        JavaSparkContext sc = new JavaSparkContext(conf);
+    public List<Tuple2<String, TreeSet<IdDate>>> find_handover(JavaSparkContext sc , String filename_in){
         JavaRDD<String> lines = sc.textFile(filename_in);
 
         JavaPairRDD<String,TreeSet<IdDate>> name_uid = lines.mapToPair(new PairFunction<String,String,TreeSet<IdDate>>() {
@@ -108,7 +104,7 @@ public class Processing implements Serializable{
         });
 
         List<Tuple2<String, TreeSet<IdDate>>> sus = suspicious.collect();
-        MyUtils.write_to_file_Id(sus, filename_out);
+        MyUtils.write_to_file_Id(sus, filename_in+"_handover.csv");
         System.out.println(String.valueOf(userNum) + " users");
         return sus;
 

@@ -23,9 +23,10 @@ public final class MyUtils {
                     wrt.write((s.toString() + ":").getBytes());
                 }
                 wrt.write('\n');
+                wrt.close();
             }
         }catch(Exception e){
-            System.out.print("Error");
+            System.out.println("Error: " + e.getMessage());
         }
     }
 
@@ -38,9 +39,10 @@ public final class MyUtils {
                     wrt.write((s.toString() + ":").getBytes());
                 }
                 wrt.write('\n');
+                wrt.close();
             }
         }catch(Exception e){
-            System.out.print("Error");
+            System.out.println("Error: " + e.getMessage());
         }
     }
 
@@ -51,8 +53,9 @@ public final class MyUtils {
                 wrt.write((in.get(i).toString()+delim).getBytes());
             }
             wrt.write((in.get(in.size() - 1).toString()).getBytes());
+            wrt.close();
         }catch(Exception e){
-            System.out.print("Error");
+            System.out.println("Error: " + e.getMessage());
         }
     }
 
@@ -63,13 +66,15 @@ public final class MyUtils {
                 wrt.write((in.get(i)+delim).getBytes());
             }
             wrt.write((in.get(in.size() - 1)).getBytes());
+            wrt.close();
         }catch(Exception e){
-            System.out.print("Error");
+            System.out.print("Error: " + e.getMessage());
         }
+
     }
 
     /*  The code to find loops in changeURLs or handovers*/
-    public static List<String> find_loop(String filename_in , String filename_out){
+    public static List<String> find_loop(String filename_in){
         List<String> out = new ArrayList<String>();
         try{
             List<String> names = new ArrayList<String>();
@@ -90,7 +95,7 @@ public final class MyUtils {
         }catch(Exception e){
             System.out.println("Error in reading the file: find_loop: " + e.getMessage());
         }
-        MyUtils.write_to_file_string(out,filename_out,'\n');
+        MyUtils.write_to_file_string(out,filename_in+"_loop",'\n');
         return out;
     }
 
@@ -107,23 +112,6 @@ public final class MyUtils {
         }
         return out;
 
-    }
-    public static void testfile (){
-
-        File file = new File("/home/hossein/Downloads/snippet1.txt");
-        FileInputStream fin = null;
-
-        try {
-            // create FileInputStream object
-            fin = new FileInputStream(file);
-            byte fileContent[] = new byte[(int)file.length()];
-            fin.read(fileContent);
-            System.out.println(fileContent.length);
-
-        }
-        catch(Exception e){
-            System.out.print("sdsadas");
-        }
     }
 
 }
