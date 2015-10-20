@@ -7,6 +7,8 @@ import org.apache.spark.api.java.function.Function2;
 import org.apache.spark.api.java.function.PairFunction;
 import scala.Tuple2;
 
+import java.io.BufferedReader;
+import java.io.FileReader;
 import java.io.Serializable;
 import java.util.*;
 
@@ -17,7 +19,7 @@ public class Processing implements Serializable{
 
     public Processing(){}
 
-    public void find_change_screenname(JavaSparkContext sc , String filename){
+    public void find_uid_names(JavaSparkContext sc , String filename, String dir_out){
         JavaRDD<String> lines = sc.textFile(filename);
 
         JavaPairRDD<String,TreeSet<URLdate>> name_uid = lines.mapToPair(new PairFunction<String,String,TreeSet<URLdate>>() {
@@ -48,24 +50,25 @@ public class Processing implements Serializable{
         });
 
         long userNum = uid_name_count.count();
-        JavaPairRDD<String,TreeSet<URLdate>> suspicious = uid_name_count.filter(new Function<Tuple2<String, TreeSet<URLdate>>, Boolean>() {
-            public Boolean call(Tuple2<String, TreeSet<URLdate>> in) throws Exception {
-                Boolean out = false;
-                if (in._2().size()>1)
-                    return true;
-                return false;
-            }
-        });
+//        JavaPairRDD<String,TreeSet<URLdate>> suspicious = uid_name_count.filter(new Function<Tuple2<String, TreeSet<URLdate>>, Boolean>() {
+//            public Boolean call(Tuple2<String, TreeSet<URLdate>> in) throws Exception {
+//                Boolean out = false;
+//                if (in._2().size()>1)
+//                    return true;
+//                return false;
+//            }
+//        });
 
-        List<Tuple2<String, TreeSet<URLdate>>> sus = suspicious.collect();
-        MyUtils.write_to_file_URL(sus, filename+"_changeURL.csv");
+        //List<Tuple2<String, TreeSet<URLdate>>> sus = suspicious.collect();
+        //MyUtils.write_to_file_URL(sus, filename+"_changeURL.csv");
+        uid_name_count.saveAsTextFile(dir_out);
         System.out.println(String.valueOf(userNum) + " users");
 
     }
 
 
 
-    public List<Tuple2<String, TreeSet<IdDate>>> find_handover(JavaSparkContext sc , String filename_in){
+    public List<Tuple2<String, TreeSet<IdDate>>> find_name_uids(JavaSparkContext sc , String filename_in, String dir_out){
         JavaRDD<String> lines = sc.textFile(filename_in);
 
         JavaPairRDD<String,TreeSet<IdDate>> name_uid = lines.mapToPair(new PairFunction<String,String,TreeSet<IdDate>>() {
@@ -103,12 +106,102 @@ public class Processing implements Serializable{
             }
         });
 
-        List<Tuple2<String, TreeSet<IdDate>>> sus = suspicious.collect();
-        MyUtils.write_to_file_Id(sus, filename_in+"_handover.csv");
+        //List<Tuple2<String, TreeSet<IdDate>>> sus = suspicious.collect();
+        //List<Tuple2<String, TreeSet<IdDate>>> sus = uid_name_count.collect();
+        //MyUtils.write_to_file_Id(sus, filename_in+"_handover.csv");
+        uid_name_count.saveAsTextFile(filename_in+"_savedRDD");
         System.out.println(String.valueOf(userNum) + " users");
-        return sus;
+        //return sus;
+        return null;
 
     }
+
+
+    public void merge_name_uid(JavaSparkContext sc , String paths_to_parts, String out_path){
+
+        JavaRDD<String> lines = sc.textFile(paths_to_parts);
+        JavaPairRDD<String,TreeSet<IdDate>> name_uid = lines.mapToPair(new PairFunction<String,String,TreeSet<IdDate>>() {
+            public Tuple2< String,TreeSet<IdDate>> call(String s) {
+                s = s.replaceAll("[\\[\\]()]","");
+                String[] elems = s.split(",");
+                TreeSet<IdDate> ts = new TreeSet<IdDate>();
+                for (int i =0 ; i<(elems.length-1)/4 ; i++){
+                    IdDate t = new IdDate(elems[i*4+1] , Long.parseLong(elems[i*4+2]), Integer.parseInt(elems[i*4+3]) , Integer.parseInt(elems[i*4+4]));
+                    ts.add(t);
+                }
+                return new Tuple2<String,TreeSet<IdDate>>(elems[0], ts);
+            }
+        });
+        JavaPairRDD<String,TreeSet<IdDate>> uid_name_count = name_uid.reduceByKey(new Function2<TreeSet<IdDate>,TreeSet<IdDate>,TreeSet<IdDate>>() {
+            public TreeSet<IdDate> call(TreeSet<IdDate> s1 , TreeSet<IdDate> s2) {
+                TreeSet<IdDate> out = new TreeSet<IdDate>(new MyDateCompId());
+                for (IdDate s : s1){
+                    //if (!out.contains(s))
+                    if (out.isEmpty() || !s.getId().equals(out.last().getId()))
+                        out.add(s);
+                }
+                for (IdDate s : s2){
+                    //if (!out.contains(s))
+                    if (out.isEmpty() || !s.getId().equals(out.last().getId()))
+                        out.add(s);
+                }
+                return out;
+            }
+        });
+
+        long userNum = uid_name_count.count();
+//        JavaPairRDD<String,TreeSet<IdDate>> suspicious = uid_name_count.filter(new Function<Tuple2<String, TreeSet<IdDate>>, Boolean>() {
+//            public Boolean call(Tuple2<String, TreeSet<IdDate>> in) throws Exception {
+//                if (in._2().size()>1)
+//                    return true;
+//                return false;
+//            }
+//        });
+
+        //List<Tuple2<String, TreeSet<IdDate>>> sus = suspicious.collect();
+        //List<Tuple2<String, TreeSet<IdDate>>> sus = uid_name_count.collect();
+        //MyUtils.write_to_file_Id(sus, filename_in+"_handover.csv");
+        uid_name_count.saveAsTextFile("merge"+out_path);
+        System.out.println(String.valueOf(userNum) + " users");
+
+    }
+
+    public void find_handover (String dir_in, String file_out){
+
+    }
+    public void find_changeURL (String dir_in, String file_out){
+
+    }
+
+    /*  The code to find loops in changeURLs or handovers*/
+    public void find_loop(String filename_in, String filename_out){
+
+        List<String> out = new ArrayList<String>();
+        try{
+            List<String> names = new ArrayList<String>();
+            BufferedReader br = new BufferedReader(new FileReader(filename_in));
+            String line;
+            while ((line = br.readLine()) != null) {
+                names.clear();
+                String[] tokens = line.split(":");
+                for (int i = 1 ; i<tokens.length ; i++){
+                    String[] itr = tokens[i].split(",");
+                    if (names.contains(itr[0])){
+                        //System.out.println(tokens[0]);
+                        out.add(MyUtils.replaceTimestampWithDate(line));
+                    }
+                    names.add(itr[0]);
+                }
+            }
+        }catch(Exception e){
+            System.out.println("Error in reading the file: find_loop: " + e.getMessage());
+        }
+        if(out.size()>0) {
+            MyUtils.write_to_file_string(out, filename_out, '\n');
+        }
+
+    }
+
 
     public static List<Tuple2<Long,String>> sort_tweet_by_time(String fileName){
         SparkConf conf = new SparkConf().setAppName(Params.sparkAppName).setMaster(Params.sparkMaster);
