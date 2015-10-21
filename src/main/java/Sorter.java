@@ -40,7 +40,7 @@ public class Sorter{
 
         }
         else if(args[0].equals("merge")){
-            String in_path = args[1]+"/parts*,"+args[2]+"/parts*";//parts dir
+            String in_path = args[1]+"/part*,"+args[2]+"/part*";//parts dir
             String out_path = args[3];//prts dir
             processing.merge_name_uid(sc, in_path, out_path);
 
@@ -57,12 +57,19 @@ public class Sorter{
             processing.find_changeURL(dir_in, file_out);
 
         }
-        else if(args[0].equals("loop")){
+        else if(args[0].equals("loop_handover")){
             String file_in = args[1];//file in csv
             String file_out = args[2];//file out csv
-            processing.find_loop(file_in, file_out);
+            processing.find_loop_handover(file_in, file_out);
 
         }
+        else if(args[0].equals("loop_changeURL")){
+            String file_in = args[1];//file in csv
+            String file_out = args[2];//file out csv
+            processing.find_loop_changeURL(file_in, file_out);
+
+        }
+
 
         endTime1 = System.currentTimeMillis();
         System.out.println("It took " + String.valueOf((endTime1 - startTime1)/1000) + " seconds");

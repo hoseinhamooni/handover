@@ -8,6 +8,7 @@ import org.apache.spark.api.java.function.PairFunction;
 import scala.Tuple2;
 
 import java.io.BufferedReader;
+import java.io.FileOutputStream;
 import java.io.FileReader;
 import java.io.Serializable;
 import java.util.*;
@@ -26,7 +27,7 @@ public class Processing implements Serializable{
             public Tuple2< String,TreeSet<URLdate>> call(String s) {
                 String[] elems = s.split(",");
                 //String name = elems[1];
-                URLdate t = new URLdate(elems[1] , Long.parseLong(elems[0]));
+                URLdate t = new URLdate(elems[1] , Long.parseLong(elems[0]), Integer.parseInt(elems[3]) , Integer.parseInt(elems[5]));
                 TreeSet<URLdate> ts = new TreeSet<URLdate>();
                 ts.add(t);
                 return new Tuple2<String,TreeSet<URLdate>>(elems[2], ts);
@@ -68,7 +69,7 @@ public class Processing implements Serializable{
 
 
 
-    public List<Tuple2<String, TreeSet<IdDate>>> find_name_uids(JavaSparkContext sc , String filename_in, String dir_out){
+    public void find_name_uids(JavaSparkContext sc , String filename_in, String dir_out){
         JavaRDD<String> lines = sc.textFile(filename_in);
 
         JavaPairRDD<String,TreeSet<IdDate>> name_uid = lines.mapToPair(new PairFunction<String,String,TreeSet<IdDate>>() {
@@ -109,10 +110,9 @@ public class Processing implements Serializable{
         //List<Tuple2<String, TreeSet<IdDate>>> sus = suspicious.collect();
         //List<Tuple2<String, TreeSet<IdDate>>> sus = uid_name_count.collect();
         //MyUtils.write_to_file_Id(sus, filename_in+"_handover.csv");
-        uid_name_count.saveAsTextFile(filename_in+"_savedRDD");
+        uid_name_count.saveAsTextFile(dir_out);
         System.out.println(String.valueOf(userNum) + " users");
         //return sus;
-        return null;
 
     }
 
@@ -167,38 +167,103 @@ public class Processing implements Serializable{
     }
 
     public void find_handover (String dir_in, String file_out){
+        FileOutputStream wrt;
+        String[] inFiles = MyUtils.get_list_of_files(dir_in);
+        try {
+            wrt = new FileOutputStream(file_out);
+            for (int i=0 ; i<inFiles.length ; i++){
+                BufferedReader br = new BufferedReader(new FileReader(dir_in+"/"+inFiles[i]));
+                String line;
+                while ((line = br.readLine()) != null) {
+                    if (line.split(",").length>5){
+                        wrt.write((line.replaceAll("[\\[\\]() ]", "") + "\n").getBytes());
+                    }
+                }
+            }
+
+
+
+        }catch(Exception e){
+            System.out.println("Error: " + e.getMessage());
+        }
+
+
 
     }
     public void find_changeURL (String dir_in, String file_out){
+        FileOutputStream wrt;
+        String[] inFiles = MyUtils.get_list_of_files(dir_in);
+        try {
+            wrt = new FileOutputStream(file_out);
+            for (int i=0 ; i<inFiles.length ; i++){
+                BufferedReader br = new BufferedReader(new FileReader(dir_in+"/"+inFiles[i]));
+                String line;
+                while ((line = br.readLine()) != null) {
+                    if (line.split(",").length>5){
+                        wrt.write((line.replaceAll("[\\[\\]() ]", "") + "\n").getBytes());
+                    }
+                }
+            }
+
+
+
+        }catch(Exception e){
+            System.out.println("Error: " + e.getMessage());
+        }
 
     }
 
-    /*  The code to find loops in changeURLs or handovers*/
-    public void find_loop(String filename_in, String filename_out){
+    /*  The code to find loops in handovers*/
+    public void find_loop_handover(String filename_in, String filename_out){
+        FileOutputStream wrt;
 
-        List<String> out = new ArrayList<String>();
         try{
+            wrt = new FileOutputStream(filename_out);
             List<String> names = new ArrayList<String>();
             BufferedReader br = new BufferedReader(new FileReader(filename_in));
             String line;
             while ((line = br.readLine()) != null) {
                 names.clear();
-                String[] tokens = line.split(":");
-                for (int i = 1 ; i<tokens.length ; i++){
-                    String[] itr = tokens[i].split(",");
-                    if (names.contains(itr[0])){
-                        //System.out.println(tokens[0]);
-                        out.add(MyUtils.replaceTimestampWithDate(line));
+                String[] tokens = line.split(",");
+                for (int i = 0 ; i<(tokens.length-1)/4 ; i++){
+                    if (names.contains(tokens[i*4+1])){
+                        wrt.write((line+"\n").getBytes());
+                        break;
                     }
-                    names.add(itr[0]);
+                    names.add(tokens[i*4+1]);
                 }
             }
         }catch(Exception e){
             System.out.println("Error in reading the file: find_loop: " + e.getMessage());
         }
-        if(out.size()>0) {
-            MyUtils.write_to_file_string(out, filename_out, '\n');
+
+
+    }
+
+    /*  The code to find loops in handovers*/
+    public void find_loop_changeURL(String filename_in, String filename_out){
+        FileOutputStream wrt;
+
+        try{
+            wrt = new FileOutputStream(filename_out);
+            List<String> names = new ArrayList<String>();
+            BufferedReader br = new BufferedReader(new FileReader(filename_in));
+            String line;
+            while ((line = br.readLine()) != null) {
+                names.clear();
+                String[] tokens = line.split(",");
+                for (int i = 0 ; i<(tokens.length-1)/4 ; i++){
+                    if (names.contains(tokens[i*4+1])){
+                        wrt.write((line+"\n").getBytes());
+                        break;
+                    }
+                    names.add(tokens[i*4+1]);
+                }
+            }
+        }catch(Exception e){
+            System.out.println("Error in reading the file: find_loop: " + e.getMessage());
         }
+
 
     }
 

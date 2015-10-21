@@ -29,6 +29,23 @@ public final class MyUtils {
         }
     }
 
+    public static String[] get_list_of_files(String path){
+        File folder = new File(path);
+        File[] listOfFiles = folder.listFiles();
+        List<String> out = new ArrayList<String>();
+
+        for (int i = 0; i < listOfFiles.length; i++) {
+            if (listOfFiles[i].isFile() && listOfFiles[i].getName().indexOf("part")==0) {
+                out.add(listOfFiles[i].getName());
+            }
+        }
+
+        String[] output = new String[out.size()];
+        out.toArray(output);
+        return output;
+
+    }
+
     public static void write_to_file_Id(List<Tuple2<String, TreeSet<IdDate>>> in , String filename){
         try {
             FileOutputStream wrt = new FileOutputStream(filename);
@@ -39,12 +56,12 @@ public final class MyUtils {
                 }
                 wrt.write('\n');
             }
-        }catch(Exception e){
+        } catch(Exception e){
             System.out.println("Error: " + e.getMessage());
         }
     }
 
-    public static void write_to_file_int(List<Integer> in , String filename, char delim){
+    public static void write_to_file_int(List<Integer> in , String filename, char delim) {
         try {
             FileOutputStream wrt = new FileOutputStream(filename);
             for (int i=0 ; i<in.size()-1 ; i++){

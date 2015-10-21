@@ -7,10 +7,32 @@ import java.util.Comparator;
 public class URLdate implements Serializable,Comparable{
     private String name;
     private Long date;
+    private Integer follower;
+    private Integer tweets;
 
-    public URLdate(String name , Long date){
+    public Integer getFollower() {
+        return follower;
+    }
+
+    public void setFollower(Integer follower) {
+        this.follower = follower;
+    }
+
+    public Integer getTweets() {
+        return tweets;
+    }
+
+    public void setTweets(Integer tweets) {
+        this.tweets = tweets;
+    }
+
+
+
+    public URLdate(String name , Long date, Integer follower, Integer tweets){
         this.name = name;
         this.date = date;
+        this.follower = follower;
+        this.tweets = tweets;
     }
 
     public void setDate(Long date) {
@@ -71,7 +93,7 @@ public class URLdate implements Serializable,Comparable{
 
     @Override
     public String toString() {
-        return this.getName()+","+this.getDate();
+        return this.getName()+","+this.getDate()+","+this.getFollower()+","+this.getTweets();
     }
 
 
