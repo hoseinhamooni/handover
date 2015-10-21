@@ -122,7 +122,7 @@ public class Processing implements Serializable{
         JavaRDD<String> lines = sc.textFile(paths_to_parts);
         JavaPairRDD<String,TreeSet<IdDate>> name_uid = lines.mapToPair(new PairFunction<String,String,TreeSet<IdDate>>() {
             public Tuple2< String,TreeSet<IdDate>> call(String s) {
-                s = s.replaceAll("[\\[\\]()]","");
+                s = s.replaceAll("[\\[\\]()] ","");
                 String[] elems = s.split(",");
                 TreeSet<IdDate> ts = new TreeSet<IdDate>();
                 for (int i =0 ; i<(elems.length-1)/4 ; i++){
@@ -161,7 +161,7 @@ public class Processing implements Serializable{
         //List<Tuple2<String, TreeSet<IdDate>>> sus = suspicious.collect();
         //List<Tuple2<String, TreeSet<IdDate>>> sus = uid_name_count.collect();
         //MyUtils.write_to_file_Id(sus, filename_in+"_handover.csv");
-        uid_name_count.saveAsTextFile("merge"+out_path);
+        uid_name_count.saveAsTextFile(out_path);
         System.out.println(String.valueOf(userNum) + " users");
 
     }
