@@ -122,7 +122,7 @@ public class Processing implements Serializable{
         JavaRDD<String> lines = sc.textFile(paths_to_parts);
         JavaPairRDD<String,TreeSet<IdDate>> name_uid = lines.mapToPair(new PairFunction<String,String,TreeSet<IdDate>>() {
             public Tuple2< String,TreeSet<IdDate>> call(String s) {
-                s = s.replaceAll("[\\[\\]()] ","");
+                s = s.replaceAll("[\\[\\]() ]","");
                 String[] elems = s.split(",");
                 TreeSet<IdDate> ts = new TreeSet<IdDate>();
                 for (int i =0 ; i<(elems.length-1)/4 ; i++){
@@ -160,6 +160,55 @@ public class Processing implements Serializable{
 
         //List<Tuple2<String, TreeSet<IdDate>>> sus = suspicious.collect();
         //List<Tuple2<String, TreeSet<IdDate>>> sus = uid_name_count.collect();
+        //MyUtils.write_to_file_Id(sus, filename_in+"_handover.csv");
+        uid_name_count.saveAsTextFile(out_path);
+        System.out.println(String.valueOf(userNum) + " users");
+
+    }
+
+    public void merge_uid_name(JavaSparkContext sc , String paths_to_parts, String out_path){
+
+        JavaRDD<String> lines = sc.textFile(paths_to_parts);
+        JavaPairRDD<String,TreeSet<URLdate>> name_uid = lines.mapToPair(new PairFunction<String,String,TreeSet<URLdate>>() {
+            public Tuple2< String,TreeSet<URLdate>> call(String s) {
+                s = s.replaceAll("[\\[\\]() ]","");
+                String[] elems = s.split(",");
+                TreeSet<URLdate> ts = new TreeSet<URLdate>();
+                for (int i =0 ; i<(elems.length-1)/4 ; i++){
+                    URLdate t = new URLdate(elems[i*4+1] , Long.parseLong(elems[i*4+2]), Integer.parseInt(elems[i*4+3]) , Integer.parseInt(elems[i*4+4]));
+                    ts.add(t);
+                }
+                return new Tuple2<String,TreeSet<URLdate>>(elems[0], ts);
+            }
+        });
+        JavaPairRDD<String,TreeSet<URLdate>> uid_name_count = name_uid.reduceByKey(new Function2<TreeSet<URLdate>,TreeSet<URLdate>,TreeSet<URLdate>>() {
+            public TreeSet<URLdate> call(TreeSet<URLdate> s1 , TreeSet<URLdate> s2) {
+                TreeSet<URLdate> out = new TreeSet<URLdate>(new MyDateCompURL());
+                for (URLdate s : s1){
+                    //if (!out.contains(s))
+                    if (out.isEmpty() || !s.getName().equals(out.last().getName()))
+                        out.add(s);
+                }
+                for (URLdate s : s2){
+                    //if (!out.contains(s))
+                    if (out.isEmpty() || !s.getName().equals(out.last().getName()))
+                        out.add(s);
+                }
+                return out;
+            }
+        });
+
+        long userNum = uid_name_count.count();
+//        JavaPairRDD<String,TreeSet<URLdate>> suspicious = uid_name_count.filter(new Function<Tuple2<String, TreeSet<URLdate>>, Boolean>() {
+//            public Boolean call(Tuple2<String, TreeSet<URLdate>> in) throws Exception {
+//                if (in._2().size()>1)
+//                    return true;
+//                return false;
+//            }
+//        });
+
+        //List<Tuple2<String, TreeSet<URLdate>>> sus = suspicious.collect();
+        //List<Tuple2<String, TreeSet<URLdate>>> sus = uid_name_count.collect();
         //MyUtils.write_to_file_Id(sus, filename_in+"_handover.csv");
         uid_name_count.saveAsTextFile(out_path);
         System.out.println(String.valueOf(userNum) + " users");
@@ -254,7 +303,7 @@ public class Processing implements Serializable{
                 String[] tokens = line.split(",");
                 for (int i = 0 ; i<(tokens.length-1)/4 ; i++){
                     if (names.contains(tokens[i*4+1])){
-                        wrt.write((line+"\n").getBytes());
+                        wrt.write((line + "\n").getBytes());
                         break;
                     }
                     names.add(tokens[i*4+1]);

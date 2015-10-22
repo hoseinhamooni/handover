@@ -16,7 +16,16 @@ public class Sorter{
 
 
         if (args.length < 1){
-            System.out.println("Not Enough Arguments");
+            String toShow = "Help to run SparkSort:\n"+
+                    "pre_handover           in_file_name out_dir_name\n"+
+                    "pre_changeURL          in_file_name out_dir_name\n"+
+                    "merge_handover         in_dir1 inn_dir2 out_dir_name\n"+
+                    "merge_changeURL        in_dir1 inn_dir2 out_dir_name\n"+
+                    "handover               in_dir out_file_name\n"+
+                    "changeURL              in_dir out_file_name\n"+
+                    "loop_handover          in_file_name out_file_name\n"+
+                    "loop_changeURL         in_file_name out_file_name\n";
+            System.out.println(toShow);
             return;
         }
 
@@ -27,19 +36,25 @@ public class Sorter{
         startTime1 =  System.currentTimeMillis();
 
 
-        if(args[0].equals("nameuids")){
+        if(args[0].equals("pre_handover")){
             String filename_in = args[1];//csv file
             String dir_out = args[2];//parts dir
             processing.find_name_uids(sc, filename_in, dir_out);
 
         }
-        else if(args[0].equals("uidnames")){
+        else if(args[0].equals("pre_changeURL")){
             String filename_in = args[1];//csv file
             String dir_out = args[2];//parts dir
             processing.find_uid_names(sc, filename_in, dir_out);
 
         }
-        else if(args[0].equals("merge")){
+        else if(args[0].equals("merge_handover")){
+            String in_path = args[1]+"/part*,"+args[2]+"/part*";//parts dir
+            String out_path = args[3];//prts dir
+            processing.merge_name_uid(sc, in_path, out_path);
+
+        }
+        else if(args[0].equals("merge_changeURL")){
             String in_path = args[1]+"/part*,"+args[2]+"/part*";//parts dir
             String out_path = args[3];//prts dir
             processing.merge_name_uid(sc, in_path, out_path);
