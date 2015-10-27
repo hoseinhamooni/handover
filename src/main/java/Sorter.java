@@ -57,7 +57,7 @@ public class Sorter{
         else if(args[0].equals("merge_changeURL")){
             String in_path = args[1]+"/part*,"+args[2]+"/part*";//parts dir
             String out_path = args[3];//prts dir
-            processing.merge_name_uid(sc, in_path, out_path);
+            processing.merge_uid_name(sc, in_path, out_path);
 
         }
         else if(args[0].equals("handover")){

@@ -1,3 +1,4 @@
+import com.google.common.collect.Iterables;
 import org.apache.spark.SparkConf;
 import org.apache.spark.api.java.JavaPairRDD;
 import org.apache.spark.api.java.JavaRDD;
@@ -23,36 +24,51 @@ public class Processing implements Serializable{
     public void find_uid_names(JavaSparkContext sc , String filename, String dir_out){
         JavaRDD<String> lines = sc.textFile(filename);
 
-        JavaPairRDD<String,TreeSet<URLdate>> name_uid = lines.mapToPair(new PairFunction<String,String,TreeSet<URLdate>>() {
-            public Tuple2< String,TreeSet<URLdate>> call(String s) {
+        JavaPairRDD<String,List<URLdate>> name_uid = lines.mapToPair(new PairFunction<String,String,List<URLdate>>() {
+            public Tuple2< String,List<URLdate>> call(String s) {
                 String[] elems = s.split(",");
                 //String name = elems[1];
                 URLdate t = new URLdate(elems[1] , Long.parseLong(elems[0]), Integer.parseInt(elems[3]) , Integer.parseInt(elems[5]));
-                TreeSet<URLdate> ts = new TreeSet<URLdate>();
+                List<URLdate> ts = new ArrayList<URLdate>();
                 ts.add(t);
-                return new Tuple2<String,TreeSet<URLdate>>(elems[2], ts);
+                return new Tuple2<String,List<URLdate>>(elems[2], ts);
             }
         });
-        JavaPairRDD<String,TreeSet<URLdate>> uid_name_count = name_uid.reduceByKey(new Function2<TreeSet<URLdate>,TreeSet<URLdate>,TreeSet<URLdate>>() {
-            public TreeSet<URLdate> call(TreeSet<URLdate> s1 , TreeSet<URLdate> s2) {
-                TreeSet<URLdate> out = new TreeSet<URLdate>(new MyDateCompURL());
-                for (URLdate s : s1){
-                    //if (!out.contains(s))
-                    if (out.isEmpty() || !s.getName().equals(out.last().getName()))
-                        out.add(s);
+        JavaPairRDD<String,List<URLdate>> uid_name_count = name_uid.reduceByKey(new Function2<List<URLdate>,List<URLdate>,List<URLdate>>() {
+            public List<URLdate> call(List<URLdate> s1 , List<URLdate> s2) {
+                List<URLdate> out = new ArrayList<URLdate>();
+                int i1 = 0;
+                int i2 = 0;
+                while (i1<s1.size() && i2<s2.size()){
+                    if (s1.get(i1).compareTo(s2.get(i2))==-1){
+                        if(out.isEmpty() || !s1.get(i1).equals(out.get(out.size()-1)))
+                            out.add(s1.get(i1));
+                        i1++;
+                    }
+                    else{
+                        if(out.isEmpty() || !s2.get(i2).equals(out.get(out.size()-1)))
+                            out.add(s2.get(i2));
+                        i2++;
+                    }
                 }
-                for (URLdate s : s2){
-                    //if (!out.contains(s))
-                    if (out.isEmpty() || !s.getName().equals(out.last().getName()))
-                        out.add(s);
+                while (i1<s1.size()){
+                    if(!s1.get(i1).equals(out.get(out.size()-1)))
+                        out.add(s1.get(i1));
+                    i1++;
                 }
+                while (i2<s2.size()){
+                    if(!s2.get(i2).equals(out.get(out.size()-1)))
+                        out.add(s2.get(i2));
+                    i2++;
+                }
+
                 return out;
             }
         });
 
         long userNum = uid_name_count.count();
-//        JavaPairRDD<String,TreeSet<URLdate>> suspicious = uid_name_count.filter(new Function<Tuple2<String, TreeSet<URLdate>>, Boolean>() {
-//            public Boolean call(Tuple2<String, TreeSet<URLdate>> in) throws Exception {
+//        JavaPairRDD<String,List<URLdate>> suspicious = uid_name_count.filter(new Function<Tuple2<String, List<URLdate>>, Boolean>() {
+//            public Boolean call(Tuple2<String, List<URLdate>> in) throws Exception {
 //                Boolean out = false;
 //                if (in._2().size()>1)
 //                    return true;
@@ -60,7 +76,7 @@ public class Processing implements Serializable{
 //            }
 //        });
 
-        //List<Tuple2<String, TreeSet<URLdate>>> sus = suspicious.collect();
+        //List<Tuple2<String, List<URLdate>>> sus = suspicious.collect();
         //MyUtils.write_to_file_URL(sus, filename+"_changeURL.csv");
         uid_name_count.saveAsTextFile(dir_out);
         System.out.println(String.valueOf(userNum) + " users");
@@ -72,43 +88,58 @@ public class Processing implements Serializable{
     public void find_name_uids(JavaSparkContext sc , String filename_in, String dir_out){
         JavaRDD<String> lines = sc.textFile(filename_in);
 
-        JavaPairRDD<String,TreeSet<IdDate>> name_uid = lines.mapToPair(new PairFunction<String,String,TreeSet<IdDate>>() {
-            public Tuple2< String,TreeSet<IdDate>> call(String s) {
+        JavaPairRDD<String,List<IdDate>> name_uid = lines.mapToPair(new PairFunction<String,String,List<IdDate>>() {
+            public Tuple2< String,List<IdDate>> call(String s) {
                 String[] elems = s.split(",");
                 IdDate t = new IdDate(elems[2] , Long.parseLong(elems[0]), Integer.parseInt(elems[3]) , Integer.parseInt(elems[5]));
-                TreeSet<IdDate> ts = new TreeSet<IdDate>();
+                List<IdDate> ts = new ArrayList<IdDate>();
                 ts.add(t);
-                return new Tuple2<String,TreeSet<IdDate>>(elems[1], ts);
+                return new Tuple2<String,List<IdDate>>(elems[1], ts);
             }
         });
-        JavaPairRDD<String,TreeSet<IdDate>> uid_name_count = name_uid.reduceByKey(new Function2<TreeSet<IdDate>,TreeSet<IdDate>,TreeSet<IdDate>>() {
-            public TreeSet<IdDate> call(TreeSet<IdDate> s1 , TreeSet<IdDate> s2) {
-                TreeSet<IdDate> out = new TreeSet<IdDate>(new MyDateCompId());
-                for (IdDate s : s1){
-                    //if (!out.contains(s))
-                    if (out.isEmpty() || !s.getId().equals(out.last().getId()))
-                        out.add(s);
+        JavaPairRDD<String,List<IdDate>> uid_name_count = name_uid.reduceByKey(new Function2<List<IdDate>,List<IdDate>,List<IdDate>>() {
+            public List<IdDate> call(List<IdDate> s1 , List<IdDate> s2) {
+                List<IdDate> out = new ArrayList<IdDate>();
+                int i1 = 0;
+                int i2 = 0;
+                while (i1<s1.size() && i2<s2.size()){
+                    if (s1.get(i1).compareTo(s2.get(i2))==-1){
+                        if(out.isEmpty() || !s1.get(i1).equals(out.get(out.size()-1)))
+                            out.add(s1.get(i1));
+                        i1++;
+                    }
+                    else{
+                        if(out.isEmpty() || !s2.get(i2).equals(out.get(out.size()-1)))
+                            out.add(s2.get(i2));
+                        i2++;
+                    }
                 }
-                for (IdDate s : s2){
-                    //if (!out.contains(s))
-                    if (out.isEmpty() || !s.getId().equals(out.last().getId()))
-                        out.add(s);
+                while (i1<s1.size()){
+                    if(!s1.get(i1).equals(out.get(out.size()-1)))
+                        out.add(s1.get(i1));
+                    i1++;
                 }
+                while (i2<s2.size()){
+                    if(!s2.get(i2).equals(out.get(out.size()-1)))
+                        out.add(s2.get(i2));
+                    i2++;
+                }
+
                 return out;
             }
         });
 
         long userNum = uid_name_count.count();
-        JavaPairRDD<String,TreeSet<IdDate>> suspicious = uid_name_count.filter(new Function<Tuple2<String, TreeSet<IdDate>>, Boolean>() {
-            public Boolean call(Tuple2<String, TreeSet<IdDate>> in) throws Exception {
-                if (in._2().size()>1)
-                    return true;
-                return false;
-            }
-        });
+//        JavaPairRDD<String,List<IdDate>> suspicious = uid_name_count.filter(new Function<Tuple2<String, List<IdDate>>, Boolean>() {
+//            public Boolean call(Tuple2<String, List<IdDate>> in) throws Exception {
+//                if (in._2().size()>1)
+//                    return true;
+//                return false;
+//            }
+//        });
 
-        //List<Tuple2<String, TreeSet<IdDate>>> sus = suspicious.collect();
-        //List<Tuple2<String, TreeSet<IdDate>>> sus = uid_name_count.collect();
+        //List<Tuple2<String, List<IdDate>>> sus = suspicious.collect();
+        //List<Tuple2<String, List<IdDate>>> sus = uid_name_count.collect();
         //MyUtils.write_to_file_Id(sus, filename_in+"_handover.csv");
         uid_name_count.saveAsTextFile(dir_out);
         System.out.println(String.valueOf(userNum) + " users");
@@ -120,46 +151,61 @@ public class Processing implements Serializable{
     public void merge_name_uid(JavaSparkContext sc , String paths_to_parts, String out_path){
 
         JavaRDD<String> lines = sc.textFile(paths_to_parts);
-        JavaPairRDD<String,TreeSet<IdDate>> name_uid = lines.mapToPair(new PairFunction<String,String,TreeSet<IdDate>>() {
-            public Tuple2< String,TreeSet<IdDate>> call(String s) {
+        JavaPairRDD<String,List<IdDate>> name_uid = lines.mapToPair(new PairFunction<String,String,List<IdDate>>() {
+            public Tuple2< String,List<IdDate>> call(String s) {
                 s = s.replaceAll("[\\[\\]() ]","");
                 String[] elems = s.split(",");
-                TreeSet<IdDate> ts = new TreeSet<IdDate>();
+                List<IdDate> ts = new ArrayList<IdDate>();
                 for (int i =0 ; i<(elems.length-1)/4 ; i++){
                     IdDate t = new IdDate(elems[i*4+1] , Long.parseLong(elems[i*4+2]), Integer.parseInt(elems[i*4+3]) , Integer.parseInt(elems[i*4+4]));
                     ts.add(t);
                 }
-                return new Tuple2<String,TreeSet<IdDate>>(elems[0], ts);
+                return new Tuple2<String,List<IdDate>>(elems[0], ts);
             }
         });
-        JavaPairRDD<String,TreeSet<IdDate>> uid_name_count = name_uid.reduceByKey(new Function2<TreeSet<IdDate>,TreeSet<IdDate>,TreeSet<IdDate>>() {
-            public TreeSet<IdDate> call(TreeSet<IdDate> s1 , TreeSet<IdDate> s2) {
-                TreeSet<IdDate> out = new TreeSet<IdDate>(new MyDateCompId());
-                for (IdDate s : s1){
-                    //if (!out.contains(s))
-                    if (out.isEmpty() || !s.getId().equals(out.last().getId()))
-                        out.add(s);
+        JavaPairRDD<String,List<IdDate>> uid_name_count = name_uid.reduceByKey(new Function2<List<IdDate>,List<IdDate>,List<IdDate>>() {
+            public List<IdDate> call(List<IdDate> s1 , List<IdDate> s2) {
+                List<IdDate> out = new ArrayList<IdDate>();
+                int i1 = 0;
+                int i2 = 0;
+                while (i1<s1.size() && i2<s2.size()){
+                    if (s1.get(i1).compareTo(s2.get(i2))==-1){
+                        if(out.isEmpty() || !s1.get(i1).equals(out.get(out.size()-1)))
+                            out.add(s1.get(i1));
+                        i1++;
+                    }
+                    else{
+                        if(out.isEmpty() || !s2.get(i2).equals(out.get(out.size()-1)))
+                            out.add(s2.get(i2));
+                        i2++;
+                    }
                 }
-                for (IdDate s : s2){
-                    //if (!out.contains(s))
-                    if (out.isEmpty() || !s.getId().equals(out.last().getId()))
-                        out.add(s);
+                while (i1<s1.size()){
+                    if(!s1.get(i1).equals(out.get(out.size()-1)))
+                        out.add(s1.get(i1));
+                    i1++;
                 }
+                while (i2<s2.size()){
+                    if(!s2.get(i2).equals(out.get(out.size()-1)))
+                        out.add(s2.get(i2));
+                    i2++;
+                }
+
                 return out;
             }
         });
 
         long userNum = uid_name_count.count();
-//        JavaPairRDD<String,TreeSet<IdDate>> suspicious = uid_name_count.filter(new Function<Tuple2<String, TreeSet<IdDate>>, Boolean>() {
-//            public Boolean call(Tuple2<String, TreeSet<IdDate>> in) throws Exception {
+//        JavaPairRDD<String,List<IdDate>> suspicious = uid_name_count.filter(new Function<Tuple2<String, List<IdDate>>, Boolean>() {
+//            public Boolean call(Tuple2<String, List<IdDate>> in) throws Exception {
 //                if (in._2().size()>1)
 //                    return true;
 //                return false;
 //            }
 //        });
 
-        //List<Tuple2<String, TreeSet<IdDate>>> sus = suspicious.collect();
-        //List<Tuple2<String, TreeSet<IdDate>>> sus = uid_name_count.collect();
+        //List<Tuple2<String, List<IdDate>>> sus = suspicious.collect();
+        //List<Tuple2<String, List<IdDate>>> sus = uid_name_count.collect();
         //MyUtils.write_to_file_Id(sus, filename_in+"_handover.csv");
         uid_name_count.saveAsTextFile(out_path);
         System.out.println(String.valueOf(userNum) + " users");
@@ -169,46 +215,61 @@ public class Processing implements Serializable{
     public void merge_uid_name(JavaSparkContext sc , String paths_to_parts, String out_path){
 
         JavaRDD<String> lines = sc.textFile(paths_to_parts);
-        JavaPairRDD<String,TreeSet<URLdate>> name_uid = lines.mapToPair(new PairFunction<String,String,TreeSet<URLdate>>() {
-            public Tuple2< String,TreeSet<URLdate>> call(String s) {
+        JavaPairRDD<String,List<URLdate>> name_uid = lines.mapToPair(new PairFunction<String,String,List<URLdate>>() {
+            public Tuple2< String,List<URLdate>> call(String s) {
                 s = s.replaceAll("[\\[\\]() ]","");
                 String[] elems = s.split(",");
-                TreeSet<URLdate> ts = new TreeSet<URLdate>();
+                List<URLdate> ts = new ArrayList<URLdate>();
                 for (int i =0 ; i<(elems.length-1)/4 ; i++){
                     URLdate t = new URLdate(elems[i*4+1] , Long.parseLong(elems[i*4+2]), Integer.parseInt(elems[i*4+3]) , Integer.parseInt(elems[i*4+4]));
                     ts.add(t);
                 }
-                return new Tuple2<String,TreeSet<URLdate>>(elems[0], ts);
+                return new Tuple2<String,List<URLdate>>(elems[0], ts);
             }
         });
-        JavaPairRDD<String,TreeSet<URLdate>> uid_name_count = name_uid.reduceByKey(new Function2<TreeSet<URLdate>,TreeSet<URLdate>,TreeSet<URLdate>>() {
-            public TreeSet<URLdate> call(TreeSet<URLdate> s1 , TreeSet<URLdate> s2) {
-                TreeSet<URLdate> out = new TreeSet<URLdate>(new MyDateCompURL());
-                for (URLdate s : s1){
-                    //if (!out.contains(s))
-                    if (out.isEmpty() || !s.getName().equals(out.last().getName()))
-                        out.add(s);
+        JavaPairRDD<String,List<URLdate>> uid_name_count = name_uid.reduceByKey(new Function2<List<URLdate>,List<URLdate>,List<URLdate>>() {
+            public List<URLdate> call(List<URLdate> s1 , List<URLdate> s2) {
+                List<URLdate> out = new ArrayList<URLdate>();
+                int i1 = 0;
+                int i2 = 0;
+                while (i1<s1.size() && i2<s2.size()){
+                    if (s1.get(i1).compareTo(s2.get(i2))==-1){
+                        if(out.isEmpty() || !s1.get(i1).equals(out.get(out.size()-1)))
+                            out.add(s1.get(i1));
+                        i1++;
+                    }
+                    else{
+                        if(out.isEmpty() || !s2.get(i2).equals(out.get(out.size()-1)))
+                            out.add(s2.get(i2));
+                        i2++;
+                    }
                 }
-                for (URLdate s : s2){
-                    //if (!out.contains(s))
-                    if (out.isEmpty() || !s.getName().equals(out.last().getName()))
-                        out.add(s);
+                while (i1<s1.size()){
+                    if(!s1.get(i1).equals(out.get(out.size()-1)))
+                        out.add(s1.get(i1));
+                    i1++;
                 }
+                while (i2<s2.size()){
+                    if(!s2.get(i2).equals(out.get(out.size()-1)))
+                        out.add(s2.get(i2));
+                    i2++;
+                }
+
                 return out;
             }
         });
 
         long userNum = uid_name_count.count();
-//        JavaPairRDD<String,TreeSet<URLdate>> suspicious = uid_name_count.filter(new Function<Tuple2<String, TreeSet<URLdate>>, Boolean>() {
-//            public Boolean call(Tuple2<String, TreeSet<URLdate>> in) throws Exception {
+//        JavaPairRDD<String,List<URLdate>> suspicious = uid_name_count.filter(new Function<Tuple2<String, List<URLdate>>, Boolean>() {
+//            public Boolean call(Tuple2<String, List<URLdate>> in) throws Exception {
 //                if (in._2().size()>1)
 //                    return true;
 //                return false;
 //            }
 //        });
 
-        //List<Tuple2<String, TreeSet<URLdate>>> sus = suspicious.collect();
-        //List<Tuple2<String, TreeSet<URLdate>>> sus = uid_name_count.collect();
+        //List<Tuple2<String, List<URLdate>>> sus = suspicious.collect();
+        //List<Tuple2<String, List<URLdate>>> sus = uid_name_count.collect();
         //MyUtils.write_to_file_Id(sus, filename_in+"_handover.csv");
         uid_name_count.saveAsTextFile(out_path);
         System.out.println(String.valueOf(userNum) + " users");
@@ -333,7 +394,7 @@ public class Processing implements Serializable{
     }
 
 
-    public static void process_handovers(List<Tuple2<String, TreeSet<IdDate>>> sus){
+    public static void process_handovers(List<Tuple2<String, List<IdDate>>> sus){
         List<Integer> follower_diff = new ArrayList<Integer>();
         List<Integer> tweet_diff = new ArrayList<Integer>();
         for (int i=0; i<sus.size() ; i++){

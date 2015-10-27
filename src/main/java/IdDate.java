@@ -58,9 +58,9 @@ public class IdDate implements Serializable,Comparable{
     public int compareTo(Object otherStudent) {
         if (otherStudent instanceof IdDate) {
             IdDate u = (IdDate) otherStudent;
-            if (this.getId().equals(u.getId())) {
-                return 0;
-            }
+//            if (this.getId().equals(u.getId())) {
+//                return 0;
+//            }
             if (this.getDate() > u.getDate())
                 return 1;
             else

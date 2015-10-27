@@ -87,10 +87,6 @@ public final class MyUtils {
 
     }
 
-
-
-
-
     public static String replaceTimestampWithDate (String in){
 
         String[] tokens = in.split(":");

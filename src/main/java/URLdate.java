@@ -80,8 +80,8 @@ public class URLdate implements Serializable,Comparable{
     public int compareTo(Object otherStudent) {
         if (otherStudent instanceof URLdate) {
             URLdate u = (URLdate)otherStudent;
-            if (this.getName().equals(u.getName()))
-                return 0;
+//            if (this.getName().equals(u.getName()))
+//                return 0;
             if (this.getDate() > u.getDate())
                 return 1;
             else
