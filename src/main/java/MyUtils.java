@@ -100,4 +100,19 @@ public final class MyUtils {
 
     }
 
+    public static List<String> get_csv_column (String csvFile, int col){
+        List<String> out = new ArrayList<String>();
+        try{
+            BufferedReader br = new BufferedReader(new FileReader(csvFile));
+            String line;
+            while ((line = br.readLine()) != null) {
+                String[] tokens = line.split(",");
+                out.add(tokens[col]);
+            }
+        }catch(Exception e){
+                System.out.println("Error: " + e.getMessage());
+        }
+        return out;
+    }
+
 }

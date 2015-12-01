@@ -6,12 +6,10 @@ import org.apache.spark.api.java.JavaSparkContext;
 import org.apache.spark.api.java.function.Function;
 import org.apache.spark.api.java.function.Function2;
 import org.apache.spark.api.java.function.PairFunction;
+import org.apache.spark.broadcast.Broadcast;
 import scala.Tuple2;
 
-import java.io.BufferedReader;
-import java.io.FileOutputStream;
-import java.io.FileReader;
-import java.io.Serializable;
+import java.io.*;
 import java.util.*;
 
 /**
@@ -412,6 +410,98 @@ public class Processing implements Serializable{
         }
         MyUtils.write_to_file_int(follower_diff, "follower_diff", ',');
         MyUtils.write_to_file_int(tweet_diff,"tweet_diff" , ',');
+    }
+
+    public static void create_min_max (JavaSparkContext sc, String handover_file, String ni_dir, String out_file){
+        List<String> wanted = MyUtils.get_csv_column(handover_file , 0);
+        final Broadcast<List<String>> br_wanted = sc.broadcast(wanted);
+
+        JavaRDD<String> lines = sc.textFile(ni_dir);//+"/*.ni");
+        JavaRDD<String> sus = lines.filter(new Function<String, Boolean>() {
+            public Boolean call(String s) throws Exception {
+                String[] tokens = s.split(",");
+                if (br_wanted.value().contains(tokens[1]))
+                    return true;
+                return false;
+            }
+
+        });
+
+        JavaPairRDD<String,Tuple2<ShTweet,ShTweet>> key_shtweet = sus.mapToPair(new PairFunction<String, String, Tuple2<ShTweet,ShTweet>>() {
+            public Tuple2<String, Tuple2<ShTweet,ShTweet>> call(String s) {
+                String[] elems = s.split(",");
+                String key = elems[1]+","+elems[2]; //URL + UID
+                ShTweet t = new ShTweet(Long.parseLong(elems[0]), Integer.parseInt(elems[3]),Integer.parseInt(elems[4]),Integer.parseInt(elems[5]));
+                return new Tuple2<String, Tuple2<ShTweet,ShTweet>>(key, new Tuple2<ShTweet, ShTweet>(t,t));
+            }
+        });
+        JavaPairRDD<String,Tuple2<ShTweet,ShTweet>> key_shtweet_reduced = key_shtweet.reduceByKey(new Function2<Tuple2<ShTweet, ShTweet>, Tuple2<ShTweet, ShTweet>, Tuple2<ShTweet, ShTweet>>() {
+            public Tuple2<ShTweet, ShTweet> call(Tuple2<ShTweet, ShTweet> t1, Tuple2<ShTweet, ShTweet> t2) throws Exception {
+                ShTweet min;
+                ShTweet max;
+                if (t1._1.compareTo(t2._1)<0)
+                    min = t1._1;
+                else
+                    min = t2._1;
+
+                if (t1._2.compareTo(t2._2)>0)
+                    max = t1._2;
+                else
+                    max = t2._2;
+
+                return new Tuple2<ShTweet, ShTweet>(min,max);
+            }
+        });
+
+        List<Tuple2<String,Tuple2<ShTweet,ShTweet>>> info = key_shtweet_reduced.collect();
+
+        FileOutputStream wrt;
+        HashMap<String , Tuple2<ShTweet,ShTweet>> map = new HashMap<String, Tuple2<ShTweet, ShTweet>>();
+
+        try {
+            //wrt = new FileOutputStream(out_file);
+
+            for (Tuple2<String, Tuple2<ShTweet,ShTweet>> t : info){
+                map.put(t._1 , t._2);
+                //wrt.write((t._1+","+t._2._1.toString()+","+t._2._2.toString()+'\n').getBytes());
+            }
+        }
+        catch (Exception e){
+            System.out.println("Error in writing min max file");
+        }
+
+
+        String key="";
+        try{
+            File file = new File("mymap");
+            FileOutputStream fmap = new FileOutputStream(file);
+            for (String k : map.keySet()){
+                fmap.write((k+","+map.get(k)._1.toString()+","+map.get(k)._2.toString()+"\n").getBytes());
+            }
+            fmap.close();
+
+
+            wrt = new FileOutputStream(out_file);
+            BufferedReader br = new BufferedReader(new FileReader(handover_file));
+            String line;
+            while ((line = br.readLine()) != null) {
+                String[] tokens = line.split(",");
+                String url = tokens[0];
+                wrt.write((url+",").getBytes());
+                for (int i=0 ; i<(tokens.length-1)/4 ; i++){
+                    key = url + "," + tokens[i*4+1];
+                    wrt.write((map.get(key)._1.toString()+","+map.get(key)._2.toString()+",").getBytes());
+                }
+                wrt.write('\n');
+            }
+        }catch(Exception e){
+            System.out.println("Error on key: " + key + e.getMessage());
+        }
+
+
+
+
+
     }
 
 
