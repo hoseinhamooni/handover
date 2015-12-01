@@ -490,7 +490,7 @@ public class Processing implements Serializable{
                 wrt.write((url+",").getBytes());
                 for (int i=0 ; i<(tokens.length-1)/4 ; i++){
                     key = url + "," + tokens[i*4+1];
-                    wrt.write((map.get(key)._1.toString()+","+map.get(key)._2.toString()+",").getBytes());
+                    wrt.write((tokens[i*4+1]+","+map.get(key)._1.toString()+","+map.get(key)._2.toString()+",").getBytes());
                 }
                 wrt.write('\n');
             }
