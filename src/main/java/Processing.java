@@ -504,7 +504,210 @@ public class Processing implements Serializable{
 
     }
 
+    public static void create_min_max_nobug (JavaSparkContext sc, String handover_file, String ni_dir, String out_file){
+        List<String> wanted = MyUtils.get_csv_column(handover_file , 0);
+        final Broadcast<List<String>> br_wanted = sc.broadcast(wanted);
 
+        JavaRDD<String> lines = sc.textFile(ni_dir);//+"/*.ni");
+        JavaRDD<String> sus = lines.filter(new Function<String, Boolean>() {
+            public Boolean call(String s) throws Exception {
+                String[] tokens = s.split(",");
+                if (br_wanted.value().contains(tokens[1]))
+                    return true;
+                return false;
+            }
+
+        });
+
+        JavaPairRDD<String,List<IdDate>> key_shtweet = sus.mapToPair(new PairFunction<String, String, List<IdDate>>() {
+            public Tuple2<String, List<IdDate>> call(String s) {
+                String[] elems = s.split(",");
+                String key = elems[1]; //URL
+                IdDate t = new IdDate(elems[2], Long.parseLong(elems[0]));
+                List<IdDate> tmp = new ArrayList<IdDate>();
+                tmp.add(t);
+                return new Tuple2<String, List<IdDate>>(key, tmp);
+            }
+        });
+        JavaPairRDD<String,List<IdDate>> key_shtweet_reduced = key_shtweet.reduceByKey(new Function2<List<IdDate>, List<IdDate>, List<IdDate>>() {
+            public List<IdDate> call(List<IdDate> t1, List<IdDate> t2) throws Exception {
+
+                int i1 = 0;
+                int i2 = 0;
+                List<IdDate> out = new ArrayList<IdDate>();
+
+                while (i1 < t1.size() && i2 < t2.size()) {
+                    if (t1.get(i1).compareTo(t2.get(i2)) == -1) {
+                        out.add(t1.get(i1));
+                        i1++;
+                    } else {
+                        out.add(t1.get(i1));
+                        i1++;
+                    }
+                }
+                while (i1 < t1.size()) {
+                    out.add(t1.get(i1));
+                    i1++;
+                }
+                while (i2 < t2.size()) {
+                    out.add(t2.get(i2));
+                    i2++;
+                }
+                return out;
+            }
+        });
+
+        //Write a map to compact the List<IdDate>
+        JavaPairRDD<String,List<IdDate>> compact_list = key_shtweet_reduced.mapValues(new Function<List<IdDate>, List<IdDate>>() {
+            public List<IdDate> call(List<IdDate> idDates) throws Exception {
+                return null;
+            }
+        });
+
+        List<Tuple2<String,List<IdDate>>> info = compact_list.collect();
+
+        FileOutputStream wrt;
+        HashMap<String , Tuple2<ShTweet,ShTweet>> map = new HashMap<String, Tuple2<ShTweet, ShTweet>>();
+
+        try {
+            //wrt = new FileOutputStream(out_file);
+
+            for (Tuple2<String, Tuple2<ShTweet,ShTweet>> t : info){
+                map.put(t._1 , t._2);
+                //wrt.write((t._1+","+t._2._1.toString()+","+t._2._2.toString()+'\n').getBytes());
+            }
+        }
+        catch (Exception e){
+            System.out.println("Error in writing min max file");
+        }
+
+
+        String key="";
+        try{
+            File file = new File("mymap");
+            FileOutputStream fmap = new FileOutputStream(file);
+            for (String k : map.keySet()){
+                fmap.write((k+","+map.get(k)._1.toString()+","+map.get(k)._2.toString()+"\n").getBytes());
+            }
+            fmap.close();
+
+
+            wrt = new FileOutputStream(out_file);
+            BufferedReader br = new BufferedReader(new FileReader(handover_file));
+            String line;
+            while ((line = br.readLine()) != null) {
+                String[] tokens = line.split(",");
+                String url = tokens[0];
+                wrt.write((url+",").getBytes());
+                for (int i=0 ; i<(tokens.length-1)/4 ; i++){
+                    key = url + "," + tokens[i*4+1];
+                    wrt.write((tokens[i*4+1]+","+map.get(key)._1.toString()+","+map.get(key)._2.toString()+",").getBytes());
+                }
+                wrt.write('\n');
+            }
+        }catch(Exception e){
+            System.out.println("Error on key: " + key + e.getMessage());
+        }
+
+
+
+
+
+    }
+
+/*
+    public static void create_time_series (JavaSparkContext sc, String wanted_file, String ni_dir, String out_file){
+        List<String> wanted = MyUtils.get_csv_column(wanted_file , 0);
+        final Broadcast<List<String>> br_wanted = sc.broadcast(wanted);
+
+        JavaRDD<String> lines = sc.textFile(ni_dir);//+"/*.ni");
+        JavaRDD<String> sus = lines.filter(new Function<String, Boolean>() {
+            public Boolean call(String s) throws Exception {
+                String[] tokens = s.split(",");
+                if (br_wanted.value().contains(tokens[1]))
+                    return true;
+                return false;
+            }
+
+        });
+
+        JavaPairRDD<String,List<String>> key_shtweet = sus.mapToPair(new PairFunction<String, String, Tuple2<ShTweet,ShTweet>>() {
+            public Tuple2<String, Tuple2<ShTweet,ShTweet>> call(String s) {
+                String[] elems = s.split(",");
+                String key = elems[1]+","+elems[2]; //URL + UID
+                ShTweet t = new ShTweet(Long.parseLong(elems[0]), Integer.parseInt(elems[3]),Integer.parseInt(elems[4]),Integer.parseInt(elems[5]));
+                return new Tuple2<String, Tuple2<ShTweet,ShTweet>>(key, new Tuple2<ShTweet, ShTweet>(t,t));
+            }
+        });
+        JavaPairRDD<String,Tuple2<ShTweet,ShTweet>> key_shtweet_reduced = key_shtweet.reduceByKey(new Function2<Tuple2<ShTweet, ShTweet>, Tuple2<ShTweet, ShTweet>, Tuple2<ShTweet, ShTweet>>() {
+            public Tuple2<ShTweet, ShTweet> call(Tuple2<ShTweet, ShTweet> t1, Tuple2<ShTweet, ShTweet> t2) throws Exception {
+                ShTweet min;
+                ShTweet max;
+                if (t1._1.compareTo(t2._1)<0)
+                    min = t1._1;
+                else
+                    min = t2._1;
+
+                if (t1._2.compareTo(t2._2)>0)
+                    max = t1._2;
+                else
+                    max = t2._2;
+
+                return new Tuple2<ShTweet, ShTweet>(min,max);
+            }
+        });
+
+        List<Tuple2<String,Tuple2<ShTweet,ShTweet>>> info = key_shtweet_reduced.collect();
+
+        FileOutputStream wrt;
+        HashMap<String , Tuple2<ShTweet,ShTweet>> map = new HashMap<String, Tuple2<ShTweet, ShTweet>>();
+
+        try {
+            //wrt = new FileOutputStream(out_file);
+
+            for (Tuple2<String, Tuple2<ShTweet,ShTweet>> t : info){
+                map.put(t._1 , t._2);
+                //wrt.write((t._1+","+t._2._1.toString()+","+t._2._2.toString()+'\n').getBytes());
+            }
+        }
+        catch (Exception e){
+            System.out.println("Error in writing min max file");
+        }
+
+
+        String key="";
+        try{
+            File file = new File("mymap");
+            FileOutputStream fmap = new FileOutputStream(file);
+            for (String k : map.keySet()){
+                fmap.write((k+","+map.get(k)._1.toString()+","+map.get(k)._2.toString()+"\n").getBytes());
+            }
+            fmap.close();
+
+
+            wrt = new FileOutputStream(out_file);
+            BufferedReader br = new BufferedReader(new FileReader(handover_file));
+            String line;
+            while ((line = br.readLine()) != null) {
+                String[] tokens = line.split(",");
+                String url = tokens[0];
+                wrt.write((url+",").getBytes());
+                for (int i=0 ; i<(tokens.length-1)/4 ; i++){
+                    key = url + "," + tokens[i*4+1];
+                    wrt.write((tokens[i*4+1]+","+map.get(key)._1.toString()+","+map.get(key)._2.toString()+",").getBytes());
+                }
+                wrt.write('\n');
+            }
+        }catch(Exception e){
+            System.out.println("Error on key: " + key + e.getMessage());
+        }
+
+
+
+
+
+    }
+*/
 
 
     ///////////////////////////////////////////////////////Internal CLASSES///////////////////////////////////////////
