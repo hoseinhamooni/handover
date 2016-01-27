@@ -107,7 +107,7 @@ public final class MyUtils {
             String line;
             while ((line = br.readLine()) != null) {
                 String[] tokens = line.split(",");
-                out.add(tokens[col]);
+                out.add(tokens[col].trim());
             }
         }catch(Exception e){
                 System.out.println("Error: " + e.getMessage());

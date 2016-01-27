@@ -84,11 +84,25 @@ public class Sorter{
             processing.find_loop_changeURL(file_in, file_out);
 
         }
-        else if(args[0].equals("min_max")){
+        else if(args[0].equals("min_max_handover")){
             String file_in = args[1];//handover file in csv
             String dir_in = args[2];//directory that contains .ni files
             String file_out = args[3];//file out csv
-            processing.create_min_max(sc, file_in, dir_in, file_out);
+            processing.create_min_max_handover(sc, file_in, dir_in, file_out);
+
+        }
+        else if(args[0].equals("min_max_changeURL")){
+            String file_in = args[1];//changeURL file in csv
+            String dir_in = args[2];//directory that contains .ni files
+            String file_out = args[3];//file out csv
+            processing.create_min_max_changeURL(sc, file_in, dir_in, file_out);
+
+        }
+        else if(args[0].equals("min_max_handover_nobug")){
+            String file_in = args[1];//handover file in csv
+            String dir_in = args[2];//directory that contains .ni files
+            String file_out = args[3];//file out csv
+            processing.create_min_max_handover_nobug(sc, file_in, dir_in, file_out);
 
         }
 
