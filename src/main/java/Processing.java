@@ -542,8 +542,8 @@ public class Processing implements Serializable{
                         out.add(t1.get(i1));
                         i1++;
                     } else {
-                        out.add(t1.get(i1));
-                        i1++;
+                        out.add(t2.get(i2));
+                        i2++;
                     }
                 }
                 while (i1 < t1.size()) {
@@ -787,6 +787,112 @@ public class Processing implements Serializable{
 
     }
 
+    
+    
+     public static void all_steps (JavaSparkContext sc, String file_in, String file_out){
+        //List<String> wanted = MyUtils.get_csv_column(handover_file , 0);
+        //final Broadcast<List<String>> br_wanted = sc.broadcast(wanted);
+
+        JavaRDD<String> lines = sc.textFile(file_in);
+        //JavaRDD<String> sus = lines.filter(new Function<String, Boolean>() {
+          //  public Boolean call(String s) throws Exception {
+        //        String[] tokens = s.split(",");
+        //        if (br_wanted.value().contains(tokens[1]))
+        //            return true;
+        //        return false;
+        //    }
+
+        //});
+
+        JavaPairRDD<String,List<IdDate>> key_shtweet = lines.mapToPair(new PairFunction<String, String, List<IdDate>>() {
+            public Tuple2<String, List<IdDate>> call(String s) {
+                String[] elems = s.split(",");
+                String key = elems[1]; //URL
+                IdDate t = new IdDate(elems[2], Long.parseLong(elems[0]));
+                List<IdDate> tmp = new ArrayList<IdDate>();
+                tmp.add(t);
+                return new Tuple2<String, List<IdDate>>(key, tmp);
+            }
+        });
+        JavaPairRDD<String,List<IdDate>> key_shtweet_reduced = key_shtweet.reduceByKey(new Function2<List<IdDate>, List<IdDate>, List<IdDate>>() {
+            public List<IdDate> call(List<IdDate> t1, List<IdDate> t2) throws Exception {
+
+                int i1 = 0;
+                int i2 = 0;
+                List<IdDate> out = new ArrayList<IdDate>();
+
+                while (i1 < t1.size() && i2 < t2.size()) {
+                    if (t1.get(i1).compareTo(t2.get(i2)) == -1) {
+                        out.add(t1.get(i1));
+                        i1++;
+                    } else {
+                        out.add(t2.get(i2));
+                        i2++;
+                    }
+                }
+                while (i1 < t1.size()) {
+                    out.add(t1.get(i1));
+                    i1++;
+                }
+                while (i2 < t2.size()) {
+                    out.add(t2.get(i2));
+                    i2++;
+                }
+                return out;
+            }
+        });
+
+        //Write a map to compact the List<IdDate>
+        JavaPairRDD<String,List<IdDate>> compact_list = key_shtweet_reduced.mapValues(new Function<List<IdDate>, List<IdDate>>() {
+            public List<IdDate> call(List<IdDate> t) throws Exception {
+                List<IdDate> out = new ArrayList<IdDate>();
+                int i=0;
+
+                while(i<t.size()){
+                    String huid = t.get(i).getId();
+                    long min = t.get(i).getDate();
+                    long max = t.get(i).getDate();
+                    while (i<t.size() && huid.equals(t.get(i).getId())){
+                        max = t.get(i).getDate();
+                        i++;
+                    }
+                    IdDate tmp = new IdDate(huid, min, (int)(max-min), 0); //date=from     follower = to-from
+                    out.add(tmp);
+                }
+                return out;
+            }
+        });
+
+
+        JavaPairRDD<String,List<IdDate>> final_sus = compact_list.filter(new Function<Tuple2<String,List<IdDate>>, Boolean>() {
+          public Boolean call(Tuple2<String,List<IdDate>> s) throws Exception {
+                if(s._2().size()>1)
+                    return true;
+                return false;
+            }
+
+        });
+
+        List<Tuple2<String,List<IdDate>>> info = final_sus.collect();
+
+        FileOutputStream wrt;
+
+        try {
+            wrt = new FileOutputStream(file_out);
+
+            for (Tuple2<String, List<IdDate>> t : info){
+                wrt.write((t._1+",").getBytes());
+                for (IdDate x : t._2) {
+                    wrt.write((x.getId()+ "," + String.valueOf(x.getDate()) + "," + String.valueOf(x.getFollower()+x.getDate()) + ",").getBytes());
+                }
+                wrt.write('\n');
+            }
+        }
+        catch (Exception e){
+            System.out.println("Error in writing min max file");
+        }
+
+    }
 
 
 

@@ -24,7 +24,8 @@ public class Sorter{
                     "handover               in_dir out_file_name\n"+
                     "changeURL              in_dir out_file_name\n"+
                     "loop_handover          in_file_name out_file_name\n"+
-                    "loop_changeURL         in_file_name out_file_name\n";
+                    "loop_changeURL         in_file_name out_file_name\n"+
+                    "all                    in_file out_file\n";
             System.out.println(toShow);
             return;
         }
@@ -103,6 +104,12 @@ public class Sorter{
             String dir_in = args[2];//directory that contains .ni files
             String file_out = args[3];//file out csv
             processing.create_min_max_handover_nobug(sc, file_in, dir_in, file_out);
+
+        }
+        else if(args[0].equals("all")){
+            String file_in = args[1];//csv file input
+            String file_out = args[2];//output file
+            processing.all_steps(sc, file_in, file_out);
 
         }
 
